@@ -1,6 +1,6 @@
 # Running Pacer
 
-Race-split calculator, pacing-location planner and live race stopwatch for distance-running coaches. Phase 4: Live Pacer (stopwatch, manual passing-time recording, ahead/behind) on top of Phase 3 pacing locations, the Phase 2 calculator and the Phase 1 engine. Prototype additions: an optional weather card on Pacer Mode (see [Weather](#weather-optional)) and deployment to Vercel (see [DEPLOYMENT.md](DEPLOYMENT.md)).
+Race-split calculator, pacing-location planner and live race stopwatch for distance-running coaches. Phase 4: Live Pacer (stopwatch, manual passing-time recording, ahead/behind) on top of Phase 3 pacing locations, the Phase 2 calculator and the Phase 1 engine. V2 Phase 1 adds an elevation-colored Course Explorer (see [Explore a Course](#explore-a-course-v2-gpx-based)). Prototype additions: an optional weather card on Pacer Mode (see [Weather](#weather-optional)) and deployment to Vercel (see [DEPLOYMENT.md](DEPLOYMENT.md)).
 
 ## Run it
 
@@ -17,6 +17,7 @@ Other commands:
 npm test           # all tests (engine, calculator, pacing locations, live pacer)
 npm run typecheck  # tsc --noEmit
 npm run build      # typecheck + production build into dist/
+npm run courses    # rebuild src/courses/data/*.json from the GPX files in courses/
 npm run preview    # serve the production build at http://localhost:4173
 ```
 
@@ -41,8 +42,10 @@ src/
                  StopwatchDisplay, ...
   screens/       CalculatorScreen, PacerModeScreen (Locations / Live Pacer switch), LivePacerView
   display.ts     display-only rounding and distance formatting
+  courses/       V2 Course Explorer logic (GPX parser, distance/elevation, position, profile, route colors) + data/<id>.json
   weather/       client (fetch, checks, 10-minute cache), geolocation helper, display formatting, shared types
   App.tsx, main.tsx, styles.css
+courses/         original GPX files and course.json per course; scripts/build-courses.ts makes the app data
 api/
   weather.ts     serverless weather proxy (the only place the WeatherAPI.com key is read)
 public/          home-screen icons and manifest
@@ -55,6 +58,18 @@ tests/
   weather/*.test.ts, ui/weather.test.tsx, ui/useWeather.test.tsx   weather proxy, client and card
   secrets.test.ts              guards that the API key can't reach the browser bundle
 ```
+
+## Explore a Course (V2, GPX-based)
+
+Switch to **Explore a Course** with the buttons under the title. It is separate from Race Pacer: it shares no state with the calculator, locations, Live Pacer or weather, and a running live session keeps going (a banner links back to it).
+
+- **Map** of the real GPX route, colored by elevation: the lowest point is green, the highest is red, with a gradient between (24 shades, hue 120° to 0°). A legend under the map shows the scale. A dashed amber line marks any stretch where the watch recorded nothing.
+- **Elevation profile** below the map, in feet by miles, with the total distance, gain and loss in the facts card.
+- **Slider and touch.** One position drives everything: the slider, the map marker, the profile cursor and the distance/elevation readout. Drag the slider, use arrow keys, or touch/drag the chart.
+- **Course data.** The original GPX file is kept untouched in `courses/<id>/`; `npm run courses` generates `src/courses/data/<id>.json` from it (a test fails if the committed JSON drifts from the GPX). See [courses/README.md](courses/README.md) for adding a course.
+- **Map provider.** Leaflet with OpenStreetMap tiles (`tile.openstreetmap.org`, no key). Attribution is shown on the map and is required. OSM's tile servers are a free community resource with a [usage policy](https://operations.osmfoundation.org/policies/tiles/) (no heavy or bulk use, a valid referrer, no scraping): fine for a coaching prototype, not for large traffic. To change provider, edit the tile URL and attribution in `src/components/CourseMap.tsx`. The route is vector lines, so it still shows if tiles fail to load.
+- **Accuracy.** Distance uses the WGS-84 ellipsoid. Gain and loss are estimates (5-point moving average of the watch's elevation). John Hunt Park is one recorded training run, not a measured race course.
+- Not included in this version: elevation-adjusted pacing, comparing courses, predictions, searching for courses.
 
 ## Pacing locations (Phase 3)
 
@@ -104,6 +119,10 @@ Pacer Mode has two views: **Locations** (set up where to watch) and **Live Pacer
   Paused with nothing recorded, editing is allowed.
 - **Finish.** Recording the finish completes the session and freezes the stopwatch at that same instant.
 - Nothing is saved: a refresh clears the session.
+
+## Look
+
+Light theme: page `#F8FAFC`, white cards with a `#E2E8F0` border, text `#0F172A`, labels `#475569`, actions `#2563EB` (white on it is 5.17:1). Meaning colors stay apart from the blue: green = ahead, red = behind, amber = notices. Inputs and outline buttons use a darker edge (`--border-strong`) so they meet the 3:1 contrast for controls. The theme is a set of variables at the top of `src/styles.css`.
 
 ## Rules the UI follows
 
