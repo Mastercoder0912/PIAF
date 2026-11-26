@@ -48,21 +48,21 @@ export function routeParts(course: CourseData): RouteParts {
 }
 
 /**
- * Route color by elevation: the lowest point of the course is green, the highest is red, and everything in
- * between is a smooth gradient through yellow. Done in HSL so the hue runs straight from 120 (green) to 0 (red).
+ * Route color by elevation: the lowest point of the course is red, the highest is green, and everything in
+ * between is a smooth gradient through yellow. Done in HSL so the hue runs straight from 0 (red) to 120 (green).
  */
 export const GRADIENT_SATURATION = 85;
 export const GRADIENT_LIGHTNESS = 45;
 
-/** Position within the course's elevation range: 0 at the lowest point, 1 at the highest. A flat course counts as 0. */
+/** Position within the course's elevation range: 0 at the lowest point, 1 at the highest. A flat course counts as 0.5 (the middle color), since it has no low or high. */
 export function elevationFraction(elevationMeters: number, minMeters: number, maxMeters: number): number {
   const range = maxMeters - minMeters;
-  if (!(range > 0)) return 0;
+  if (!(range > 0)) return 0.5;
   return Math.min(Math.max((elevationMeters - minMeters) / range, 0), 1);
 }
 
-/** Hue in degrees for a fraction: 120 (green) at 0, 60 (yellow) at 0.5, 0 (red) at 1. */
-export const elevationHue = (fraction: number) => 120 * (1 - Math.min(Math.max(fraction, 0), 1));
+/** Hue in degrees for a fraction: 0 (red) at 0, 60 (yellow) at 0.5, 120 (green) at 1. */
+export const elevationHue = (fraction: number) => 120 * Math.min(Math.max(fraction, 0), 1);
 
 /** CSS color for a fraction. The hue is rounded to a whole degree, which is far finer than the eye can tell apart. */
 export const elevationColor = (fraction: number) =>
@@ -74,7 +74,7 @@ export interface ColoredRun {
   points: LatLng[];
 }
 
-/** The route is drawn in this many distinct shades (5 degrees of hue each, green to red); fine enough to read as a smooth gradient. */
+/** The route is drawn in this many distinct shades (5 degrees of hue each, red to green); fine enough to read as a smooth gradient. */
 export const COLOR_STEPS = 24;
 const quantize = (fraction: number) => Math.round(fraction * COLOR_STEPS) / COLOR_STEPS;
 

@@ -17,7 +17,7 @@ import type { CourseData, CoursePosition } from "../courses/types";
 const TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors';
 
-// Start is the app's cobalt and End/position are navy: none of them can be mistaken for the green-to-red elevation colors.
+// Start is the app's cobalt and End/position are navy: none of them can be mistaken for the red-to-green elevation colors.
 const START = "#2563eb";
 const INK = "#0f172a";
 const WARN = "#b45309";
@@ -49,7 +49,7 @@ export function CourseMap({ course, position }: { course: CourseData; position: 
     const { solid, dashed } = routeParts(course);
     // A dark casing under a bright line keeps the route readable on any map background.
     for (const part of solid) L.polyline(part, { color: INK, weight: 8, opacity: 0.5, interactive: false }).addTo(map);
-    // The route is colored by elevation: lowest point green, highest red, a gradient in between.
+    // The route is colored by elevation: lowest point red, highest green, a gradient in between.
     for (const run of elevationRuns(course)) {
       L.polyline(run.points, { color: run.color, weight: 5, opacity: 1, lineCap: "round", lineJoin: "round", interactive: false, className: "course-route" }).addTo(map);
     }

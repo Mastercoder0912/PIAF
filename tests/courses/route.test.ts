@@ -3,29 +3,29 @@ import { COURSES } from "../../src/courses";
 import { elevationColor, elevationFraction, elevationHue, elevationRuns, routeParts } from "../../src/courses/route";
 import { tinyCourse } from "./helpers";
 
-describe("elevation colors: lowest green, highest red, a gradient between", () => {
-  it("is green at the lowest point, yellow halfway, red at the highest", () => {
-    expect(elevationHue(0)).toBe(120); // green
+describe("elevation colors: lowest red, highest green, a gradient between", () => {
+  it("is red at the lowest point, yellow halfway, green at the highest", () => {
+    expect(elevationHue(0)).toBe(0); // red
     expect(elevationHue(0.5)).toBe(60); // yellow
-    expect(elevationHue(1)).toBe(0); // red
-    expect(elevationColor(0)).toBe("hsl(120, 85%, 45%)");
-    expect(elevationColor(1)).toBe("hsl(0, 85%, 45%)");
+    expect(elevationHue(1)).toBe(120); // green
+    expect(elevationColor(0)).toBe("hsl(0, 85%, 45%)");
+    expect(elevationColor(1)).toBe("hsl(120, 85%, 45%)");
   });
 
-  it("changes smoothly and in one direction: higher is always redder", () => {
-    let previous = Infinity;
+  it("changes smoothly and in one direction: higher is always greener", () => {
+    let previous = -Infinity;
     for (let f = 0; f <= 1.0001; f += 0.05) {
       const hue = elevationHue(f);
-      expect(hue).toBeLessThanOrEqual(previous);
+      expect(hue).toBeGreaterThanOrEqual(previous);
       previous = hue;
     }
-    expect(elevationHue(0.25)).toBe(90);
-    expect(elevationHue(0.75)).toBe(30);
+    expect(elevationHue(0.25)).toBe(30);
+    expect(elevationHue(0.75)).toBe(90);
   });
 
   it("clamps outside 0..1", () => {
-    expect(elevationHue(-3)).toBe(120);
-    expect(elevationHue(7)).toBe(0);
+    expect(elevationHue(-3)).toBe(0);
+    expect(elevationHue(7)).toBe(120);
   });
 
   it("works out where an elevation sits between the lowest and highest", () => {
@@ -36,8 +36,8 @@ describe("elevation colors: lowest green, highest red, a gradient between", () =
     expect(elevationFraction(300, 183, 206.2)).toBe(1);
   });
 
-  it("treats a perfectly flat course as the lowest color, without dividing by zero", () => {
-    expect(elevationFraction(50, 50, 50)).toBe(0);
+  it("treats a perfectly flat course as the middle color, without dividing by zero", () => {
+    expect(elevationFraction(50, 50, 50)).toBe(0.5);
     expect(Number.isNaN(elevationFraction(50, 50, 50))).toBe(false);
   });
 });
@@ -50,8 +50,8 @@ describe("elevationRuns on a hand-made course", () => {
     expect(runs).toHaveLength(2);
     // Step 1: average of 10 and 20 = 15, halfway = yellow (hue 60).
     expect(runs[0]).toEqual({ color: "hsl(60, 85%, 45%)", points: [[10, 20], [10.001, 20]] });
-    // Step 3: average of 10 and 10 = 10, the lowest = green (hue 120).
-    expect(runs[1]).toEqual({ color: "hsl(120, 85%, 45%)", points: [[10.002, 20], [10.003, 20]] });
+    // Step 3: average of 10 and 10 = 10, the lowest = red (hue 0).
+    expect(runs[1]).toEqual({ color: "hsl(0, 85%, 45%)", points: [[10.002, 20], [10.003, 20]] });
   });
 
   it("the gap is drawn dashed instead, between the same two points the gap spans", () => {
@@ -67,18 +67,18 @@ describe("elevationRuns on a hand-made course", () => {
     const r = elevationRuns(flat);
     // Steps average 10, 10, 15: the first two share a color and merge into one run, then the climb is yellow.
     expect(r).toHaveLength(2);
-    expect(r[0]).toMatchObject({ color: "hsl(120, 85%, 45%)" });
+    expect(r[0]).toMatchObject({ color: "hsl(0, 85%, 45%)" });
     expect(r[0]?.points).toEqual([[10, 20], [10.001, 20], [10.002, 20]]);
     expect(r[1]?.points[0]).toEqual(r[0]?.points[r[0]!.points.length - 1]);
   });
 
-  it("colors a perfectly flat course all one color", () => {
+  it("colors a perfectly flat course all one color (the middle, yellow)", () => {
     const flat = tinyCourse({
       gaps: [],
       elevation: { ...tinyCourse().elevation, minMeters: 50, maxMeters: 50 },
       points: [[10, 20, 50, 0], [10.001, 20, 50, 100], [10.002, 20, 50, 200]],
     });
-    expect(elevationRuns(flat)).toEqual([{ color: "hsl(120, 85%, 45%)", points: [[10, 20], [10.001, 20], [10.002, 20]] }]);
+    expect(elevationRuns(flat)).toEqual([{ color: "hsl(60, 85%, 45%)", points: [[10, 20], [10.001, 20], [10.002, 20]] }]);
   });
 });
 
@@ -97,7 +97,7 @@ describe("elevationRuns on the John Hunt Park data", () => {
     for (const run of runs) expect(hueOf(run.color) % 5).toBe(0);
   });
 
-  it("uses only hues from green (120) to red (0)", () => {
+  it("uses only hues from red (0) to green (120)", () => {
     for (const run of runs) {
       const hue = hueOf(run.color);
       expect(hue).toBeGreaterThanOrEqual(0);
@@ -105,7 +105,7 @@ describe("elevationRuns on the John Hunt Park data", () => {
     }
   });
 
-  it("makes the lowest ground green and the highest ground red", () => {
+  it("makes the lowest ground red and the highest ground green", () => {
     const { minMeters, maxMeters } = course.elevation;
     // Find the recorded step with the lowest and highest average elevation, by looking at the data directly.
     let lowest = { ele: Infinity, i: 0 };
@@ -123,8 +123,8 @@ describe("elevationRuns on the John Hunt Park data", () => {
     };
     expect(minMeters).toBe(183);
     expect(maxMeters).toBe(206.2);
-    expect(hueOf(colorAt(lowest.i))).toBeGreaterThanOrEqual(110); // essentially green
-    expect(hueOf(colorAt(highest.i))).toBeLessThanOrEqual(15); // essentially red
+    expect(hueOf(colorAt(lowest.i))).toBeLessThanOrEqual(15); // essentially red
+    expect(hueOf(colorAt(highest.i))).toBeGreaterThanOrEqual(110); // essentially green
   });
 
   it("is continuous: each run starts exactly where the previous one stopped (except across the gap)", () => {

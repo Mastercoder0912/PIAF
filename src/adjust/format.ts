@@ -28,3 +28,11 @@ export function formatSigned(seconds: number): string {
   if (whole === 0) return "0 s";
   return `${whole > 0 ? "+" : "-"}${Math.abs(whole)} s`;
 }
+
+/** One sentence comparing the same effort on two courses. Under half a second is called "about the same". */
+export function describeCourseChange(differenceSeconds: number, oldSeconds: number, oldName: string, newName: string): string {
+  if (Math.abs(differenceSeconds) < 0.5) return `About the same on ${newName} as on ${oldName}.`;
+  const percent = ((Math.abs(differenceSeconds) / oldSeconds) * 100).toFixed(1);
+  const direction = differenceSeconds > 0 ? "slower" : "faster";
+  return `About ${formatSpan(differenceSeconds)} ${direction} on ${newName} than on ${oldName} (${percent}%).`;
+}

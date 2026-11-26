@@ -42,6 +42,7 @@ src/
                  StopwatchDisplay, ...
   screens/       CalculatorScreen, PacerModeScreen (Locations / Live Pacer switch), LivePacerView
   display.ts     display-only rounding and distance formatting
+  adjust/        elevation-adjusted estimates: model.ts (grade rule), project.ts (one course), compare.ts (course to course)
   courses/       V2 Course Explorer logic (GPX parser, distance/elevation, position, profile, route colors) + data/<id>.json
   weather/       client (fetch, checks, 10-minute cache), geolocation helper, display formatting, shared types
   App.tsx, main.tsx, styles.css
@@ -63,13 +64,20 @@ tests/
 
 Switch to **Explore a Course** with the buttons under the title. It is separate from Race Pacer: it shares no state with the calculator, locations, Live Pacer or weather, and a running live session keeps going (a banner links back to it).
 
-- **Map** of the real GPX route, colored by elevation: the lowest point is green, the highest is red, with a gradient between (24 shades, hue 120° to 0°). A legend under the map shows the scale. A dashed amber line marks any stretch where the watch recorded nothing.
+- **Map** of the real GPX route, colored by elevation: the lowest point is red, the highest is green, with a gradient between (24 shades, hue 0° to 120°). A legend under the map shows the scale. A dashed amber line marks any stretch where the watch recorded nothing.
 - **Elevation profile** below the map, in feet by miles, with the total distance, gain and loss in the facts card.
 - **Slider and touch.** One position drives everything: the slider, the map marker, the profile cursor and the distance/elevation readout. Drag the slider, use arrow keys, or touch/drag the chart.
 - **Course data.** The original GPX file is kept untouched in `courses/<id>/`; `npm run courses` generates `src/courses/data/<id>.json` from it (a test fails if the committed JSON drifts from the GPX). See [courses/README.md](courses/README.md) for adding a course.
 - **Map provider.** Leaflet with OpenStreetMap tiles (`tile.openstreetmap.org`, no key). Attribution is shown on the map and is required. OSM's tile servers are a free community resource with a [usage policy](https://operations.osmfoundation.org/policies/tiles/) (no heavy or bulk use, a valid referrer, no scraping): fine for a coaching prototype, not for large traffic. To change provider, edit the tile URL and attribution in `src/components/CourseMap.tsx`. The route is vector lines, so it still shows if tiles fail to load.
 - **Accuracy.** Distance uses the WGS-84 ellipsoid. Gain and loss are estimates (5-point moving average of the watch's elevation). John Hunt Park is one recorded training run, not a measured race course.
-- Not included in this version: elevation-adjusted pacing, comparing courses, predictions, searching for courses.
+- **Estimated pace on this course.** If you have calculated a race in Race Pacer, a card shows your flat target pace next to an estimate for this course, plus estimated splits, labelled as an estimate. It only reads the calculated race (the engine is untouched) and only appears for a race within 3% of the course length. The rule (`src/adjust/model.ts`): about 3.4% slower per 1% of uphill grade; downhill up to 12% faster at -9%, fading to no gain at -18%. Grades are measured over about 100 m; the stretch with no recorded elevation counts as flat and is reported. It is a rule of thumb, not a measurement.
+- Not included: predictions, searching for courses.
+
+## Compare Courses (V2)
+
+Enter times you ran on an **old course** and see roughly what the same effort would look like on a **new course**. For each stretch (every whole mile, then the finish) the old course's hill effect is taken out of the time and the new course's is put in: `new time = old time x new factor / old factor`, using the same rule as above, so your own pattern (a fade, a kick) carries over and only the hills change. Both courses must be within 3% of the race distance. The two elevation profiles are shown on one scale (same miles across, same feet up). It is an estimate and changes nothing in Race Pacer.
+
+To compare against a course, it has to be loaded first: add a GPX file of a run on it (see [courses/README.md](courses/README.md)). A course name alone carries no elevation.
 
 ## Pacing locations (Phase 3)
 

@@ -44,7 +44,31 @@ const MILE_STEPS = [0.1, 0.25, 0.5, 1, 2, 5, 10] as const;
 
 const fmt = (n: number) => String(Math.round(n * 10) / 10);
 
-export function buildProfile(course: CourseData, layout: ProfileLayout, maxXTicks = 6): Profile {
+/** One elevation axis shared by several profiles: the same tick step and the same height in feet for all of them. */
+export interface ElevationScale {
+  feetStep: number;
+  spanFeet: number;
+}
+
+export interface ProfileOptions {
+  /** Draw the x axis out to this many meters instead of the course length (to put two courses on one scale). */
+  xDomainMeters?: number;
+  /** Use this elevation axis instead of one fitted to the course (see `sharedElevationScale`). */
+  elevationScale?: ElevationScale;
+}
+
+/** The elevation axis that fits every given course, so their profiles can be drawn at the same feet-per-pixel. */
+export function sharedElevationScale(courses: readonly CourseData[]): ElevationScale {
+  const ranges = courses.map((c) => metersToFeet(c.elevation.maxMeters) - metersToFeet(c.elevation.minMeters));
+  const feetStep = niceStep(Math.max(...ranges, 10), 4, FEET_STEPS);
+  const needed = courses.map((c) => {
+    const low = Math.floor(metersToFeet(c.elevation.minMeters) / feetStep) * feetStep;
+    return Math.ceil(metersToFeet(c.elevation.maxMeters) / feetStep) * feetStep - low;
+  });
+  return { feetStep, spanFeet: Math.max(...needed, feetStep) };
+}
+
+export function buildProfile(course: CourseData, layout: ProfileLayout, maxXTicks = 6, options: ProfileOptions = {}): Profile {
   const { width, height, margin } = layout;
   const plot = { left: margin.left, right: width - margin.right, top: margin.top, bottom: height - margin.bottom };
   const plotWidth = Math.max(plot.right - plot.left, 1);
@@ -53,16 +77,19 @@ export function buildProfile(course: CourseData, layout: ProfileLayout, maxXTick
   // Elevation axis in feet, rounded outward to nice values so the line never touches the frame.
   const minFt = metersToFeet(course.elevation.minMeters);
   const maxFt = metersToFeet(course.elevation.maxMeters);
-  const feetStep = niceStep(Math.max(maxFt - minFt, 10), 4, FEET_STEPS);
+  const feetStep = options.elevationScale?.feetStep ?? niceStep(Math.max(maxFt - minFt, 10), 4, FEET_STEPS);
   const lowFt = Math.floor(minFt / feetStep) * feetStep;
-  const highFt = Math.max(Math.ceil(maxFt / feetStep) * feetStep, lowFt + feetStep);
+  const ownHighFt = Math.max(Math.ceil(maxFt / feetStep) * feetStep, lowFt + feetStep);
+  // A shared scale is at least as tall as this course needs (it was built from it); never let the line leave the chart.
+  const highFt = options.elevationScale === undefined ? ownHighFt : Math.max(lowFt + options.elevationScale.spanFeet, ownHighFt);
   const lowM = lowFt / metersToFeet(1);
   const highM = highFt / metersToFeet(1);
 
   const total = course.distanceMeters;
-  const x = (d: number) => plot.left + (Math.min(Math.max(d, 0), total) / total) * plotWidth;
+  const domain = Math.max(options.xDomainMeters ?? total, total);
+  const x = (d: number) => plot.left + (Math.min(Math.max(d, 0), domain) / domain) * plotWidth;
   const y = (e: number) => plot.bottom - ((e - lowM) / (highM - lowM)) * plotHeight;
-  const distanceAtX = (px: number) => (Math.min(Math.max(px - plot.left, 0), plotWidth) / plotWidth) * total;
+  const distanceAtX = (px: number) => Math.min((Math.max(px - plot.left, 0) / plotWidth) * domain, total);
 
   const coords = course.points.map((p) => `${fmt(x(p[3]))},${fmt(y(p[2]))}`);
   const linePath = `M${coords.join("L")}`;
@@ -71,7 +98,7 @@ export function buildProfile(course: CourseData, layout: ProfileLayout, maxXTick
   const yTicks: AxisTick[] = [];
   for (let ft = lowFt; ft <= highFt + 1e-9; ft += feetStep) yTicks.push({ meters: ft / metersToFeet(1), label: String(Math.round(ft)) });
 
-  const totalMiles = total / METERS_PER_MILE;
+  const totalMiles = domain / METERS_PER_MILE;
   const mileStep = niceStep(totalMiles, maxXTicks, MILE_STEPS);
   const xTicks: AxisTick[] = [];
   for (let k = 0; k * mileStep <= totalMiles + 1e-9; k++) {

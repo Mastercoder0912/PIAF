@@ -1383,7 +1383,7 @@ input {
 
 .mode-switch {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   padding: 4px;
   background: var(--surface);
@@ -1394,7 +1394,9 @@ input {
 .mode-btn {
   min-height: 48px;
   min-width: 0;
-  padding: 0 12px;
+  padding: 4px 6px;
+  line-height: 1.15;
+  font-size: 15px;
   border: 0;
   border-radius: 10px;
   background: transparent;
@@ -1828,5 +1830,31 @@ input {
 
   .estimate-table tbody .col-distance {
     font-size: 15px;
+  }
+}
+
+/* Long stretch names ("2 miles to 3 miles") wrap instead of pushing the table past the screen. */
+.estimate-table .col-distance {
+  width: 34%;
+}
+
+.estimate-table .distance-text {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 340px) {
+  .estimate-table tbody .col-time {
+    font-size: 15px;
+  }
+
+  .estimate-table tbody .col-distance {
+    font-size: 14px;
+    width: 30%;
+  }
+
+  .estimate-table thead th {
+    font-size: 11px;
+    letter-spacing: 0;
   }
 }
