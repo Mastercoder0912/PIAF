@@ -105,7 +105,7 @@ export function CourseExplorerScreen({ courses = COURSES, race = null, raceIsSta
             className="legend-gradient"
             data-testid="legend-gradient"
             role="img"
-            aria-label="Route color: green at the lowest point, through yellow, to red at the highest point"
+            aria-label="Route color: red at the lowest point, through yellow, to green at the highest point"
             style={{ background: `linear-gradient(90deg, ${elevationColor(0)}, ${elevationColor(0.5)}, ${elevationColor(1)})` }}
           />
           {course.gaps.length > 0 ? (

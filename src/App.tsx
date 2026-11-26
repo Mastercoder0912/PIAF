@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { CalculatorScreen } from "./screens/CalculatorScreen";
+import { CompareCoursesScreen } from "./screens/CompareCoursesScreen";
 import { CourseExplorerScreen } from "./screens/CourseExplorerScreen";
 import type { Clock } from "./live/stopwatch";
 import { PacerModeScreen, type PacerView } from "./screens/PacerModeScreen";
@@ -11,8 +12,8 @@ import { useLocations } from "./state/useLocations";
 import { sessionPhase } from "./live/session";
 
 type Screen = "calculator" | "pacer";
-/** The two top-level modes. Race Pacer is everything that existed before; Explore a Course is separate. */
-type Mode = "race" | "course";
+/** The top-level modes. Race Pacer is everything that existed before; the others are separate from it. */
+type Mode = "race" | "course" | "compare";
 
 /** `clock` is only for tests; the app uses the browser's monotonic clock. */
 export default function App({ clock }: { clock?: Clock } = {}) {
@@ -95,11 +96,19 @@ export default function App({ clock }: { clock?: Clock } = {}) {
           >
             Explore a Course
           </button>
+          <button
+            type="button"
+            className="mode-btn"
+            aria-current={mode === "compare" ? "page" : undefined}
+            onClick={() => setMode("compare")}
+          >
+            Compare Courses
+          </button>
         </div>
       </nav>
 
       <main className="container">
-        {mode === "course" ? (
+        {mode !== "race" ? (
           <>
             {liveActive ? (
               <p className="live-banner" role="status">
@@ -117,14 +126,18 @@ export default function App({ clock }: { clock?: Clock } = {}) {
                 </button>
               </p>
             ) : null}
-            <CourseExplorerScreen
-              race={race}
-              raceIsStale={calc.isStale}
-              onOpenCalculator={() => {
-                setMode("race");
-                setScreen("calculator");
-              }}
-            />
+            {mode === "course" ? (
+              <CourseExplorerScreen
+                race={race}
+                raceIsStale={calc.isStale}
+                onOpenCalculator={() => {
+                  setMode("race");
+                  setScreen("calculator");
+                }}
+              />
+            ) : (
+              <CompareCoursesScreen />
+            )}
           </>
         ) : screen === "calculator" ? (
           <CalculatorScreen calc={calc} pacingLocationCount={locations.count} />

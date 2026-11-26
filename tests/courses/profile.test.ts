@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildProfile, niceStep, type ProfileLayout } from "../../src/courses/profile";
+import { buildProfile, niceStep, sharedElevationScale, type ProfileLayout } from "../../src/courses/profile";
 import { COURSES } from "../../src/courses";
 import { tinyCourse } from "./helpers";
 
@@ -111,5 +111,61 @@ describe("buildProfile on the John Hunt Park data", () => {
     expect(Number.isFinite(profile.x(100))).toBe(true);
     expect(Number.isFinite(profile.y(190))).toBe(true);
     expect(profile.linePath).not.toMatch(/NaN|Infinity/);
+  });
+});
+
+describe("buildProfile with a shared scale (used to compare two courses)", () => {
+  const make = (distanceMeters: number, top: number) =>
+    tinyCourse({
+      distanceMeters,
+      gaps: [],
+      elevation: { minMeters: 0, maxMeters: top, startMeters: 0, endMeters: top, gainMeters: top, lossMeters: 0, method: "test" },
+      points: [0, top / 2, top].map((e, i) => [34, -86 + i * 0.001, e, (i * distanceMeters) / 2] as [number, number, number, number]),
+    });
+  const short = make(100, 6);
+  const tall = make(200, 50);
+  const layout = { width: 400, height: 200, margin: { top: 10, right: 10, bottom: 30, left: 40 } };
+
+  it("a shared x domain puts the shorter course's end part-way across, not at the right edge", () => {
+    const own = buildProfile(short, layout);
+    const shared = buildProfile(short, layout, 6, { xDomainMeters: 200 });
+    expect(own.x(100)).toBe(own.plot.right);
+    expect(shared.x(100)).toBeCloseTo((shared.plot.left + shared.plot.right) / 2, 9);
+    expect(shared.distanceAtX(shared.plot.right)).toBe(100); // a touch beyond the course end clamps to the end
+    expect(shared.x(200)).toBe(shared.plot.right);
+  });
+
+  it("a shared elevation scale is the same height and tick step for every course", () => {
+    // short: 0..6 m = 0..19.7 ft; tall: 0..50 m = 0..164 ft. The range is 164 ft, so the step is 50 ft (164 / 50 = 3.3 <= 4).
+    const scale = sharedElevationScale([short, tall]);
+    expect(scale).toEqual({ feetStep: 50, spanFeet: 200 }); // tall needs 0..200 ft; short needs only 0..50
+    const a = buildProfile(short, layout, 6, { elevationScale: scale });
+    const b = buildProfile(tall, layout, 6, { elevationScale: scale });
+    expect(a.yTicks.map((t) => t.label)).toEqual(["0", "50", "100", "150", "200"]);
+    expect(b.yTicks.map((t) => t.label)).toEqual(["0", "50", "100", "150", "200"]);
+    const feetPerPixel = (p: ReturnType<typeof buildProfile>, m: number) => (m * 3.28084) / (p.y(0) - p.y(m));
+    expect(feetPerPixel(a, 20)).toBeCloseTo(feetPerPixel(b, 20), 6);
+  });
+
+  it("a course starting higher keeps the same height, with its own labels", () => {
+    const high = tinyCourse({
+      distanceMeters: 100,
+      gaps: [],
+      elevation: { minMeters: 300, maxMeters: 306, startMeters: 300, endMeters: 306, gainMeters: 6, lossMeters: 0, method: "test" },
+      points: [[34, -86, 300, 0], [34.001, -86, 306, 100]],
+    });
+    const scale = sharedElevationScale([high, tall]);
+    const p = buildProfile(high, layout, 6, { elevationScale: scale });
+    expect(p.yTicks[0]!.label).toBe("950"); // 300 m = 984 ft, rounded down to a multiple of 50
+    expect(p.yTicks.length).toBe(scale.spanFeet / scale.feetStep + 1);
+  });
+
+  it("an axis too small for the course is stretched rather than letting the line leave the chart", () => {
+    const p = buildProfile(tall, layout, 6, { elevationScale: { feetStep: 50, spanFeet: 50 } });
+    expect(p.y(50)).toBeGreaterThanOrEqual(p.plot.top);
+  });
+
+  it("the default behaviour is unchanged", () => {
+    expect(buildProfile(tall, layout).yTicks).toEqual(buildProfile(tall, layout, 6, {}).yTicks);
   });
 });
