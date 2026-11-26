@@ -117,7 +117,14 @@ export default function App({ clock }: { clock?: Clock } = {}) {
                 </button>
               </p>
             ) : null}
-            <CourseExplorerScreen />
+            <CourseExplorerScreen
+              race={race}
+              raceIsStale={calc.isStale}
+              onOpenCalculator={() => {
+                setMode("race");
+                setScreen("calculator");
+              }}
+            />
           </>
         ) : screen === "calculator" ? (
           <CalculatorScreen calc={calc} pacingLocationCount={locations.count} />

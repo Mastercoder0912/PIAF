@@ -1717,3 +1717,116 @@ input {
     margin: 0 auto;
   }
 }
+
+/* Elevation-adjusted estimate (Explore a Course) */
+.estimate-pill {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 10px;
+  border: 1px solid var(--warn);
+  border-radius: 999px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.estimate-lead {
+  margin: 0 0 12px;
+  color: var(--muted);
+}
+
+.estimate-note {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--warn);
+  border-radius: 10px;
+  background: var(--warn-soft);
+  font-weight: 600;
+}
+
+.estimate-compare {
+  margin-bottom: 8px;
+}
+
+.estimate-difference {
+  margin: 8px 0 0;
+  font-weight: 700;
+}
+
+.estimate-subtitle {
+  margin: 20px 0 8px;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.estimate-table th,
+.estimate-table td {
+  padding-left: 8px;
+  padding-right: 8px;
+}
+
+.estimate-details {
+  margin-top: 16px;
+}
+
+.estimate-details summary {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+/* Three narrow columns so the estimated-splits table fits a 320 px phone without sideways scrolling. */
+.estimate-table thead th {
+  white-space: normal;
+  line-height: 1.2;
+}
+
+.estimate-table tbody .col-time {
+  font-size: 17px;
+}
+
+.estimate-table .finish-pill {
+  display: table;
+  margin: 4px 0 0;
+}
+
+.estimate-time,
+.estimate-leg {
+  display: block;
+}
+
+.estimate-leg {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.finish-row .estimate-leg {
+  color: inherit;
+}
+
+@media (max-width: 380px) {
+  .estimate-table th,
+  .estimate-table td {
+    padding-left: 3px;
+    padding-right: 3px;
+  }
+
+  .estimate-table tbody .col-time {
+    font-size: 16px;
+  }
+
+  .estimate-table tbody .col-distance {
+    font-size: 15px;
+  }
+}

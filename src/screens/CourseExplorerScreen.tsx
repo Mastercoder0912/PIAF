@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CourseMap } from "../components/CourseMap";
 import { ElevationProfile } from "../components/ElevationProfile";
+import { AdjustedPaceCard } from "../components/AdjustedPaceCard";
 import { COURSES } from "../courses";
 import {
   describeGap,
@@ -14,6 +15,7 @@ import {
 import { clampDistance, positionAt } from "../courses/position";
 import { elevationColor } from "../courses/route";
 import type { CourseData } from "../courses/types";
+import type { RaceCalculation } from "../engine";
 
 /** One step of the slider, in meters. Fine enough to feel continuous; coarse enough for the arrow keys to be useful. */
 const SLIDER_STEP_METERS = 5;
@@ -21,6 +23,10 @@ const SLIDER_STEP_METERS = 5;
 interface CourseExplorerScreenProps {
   /** The courses to offer. Defaults to the ones that ship with the app; tests pass their own. */
   courses?: readonly CourseData[];
+  /** The calculator's last calculated race, used for the estimate. Read only. */
+  race?: RaceCalculation | null;
+  raceIsStale?: boolean;
+  onOpenCalculator?: () => void;
 }
 
 /**
@@ -28,7 +34,7 @@ interface CourseExplorerScreenProps {
  * the course). The map marker, the profile cursor, the slider and the readouts are all computed from it,
  * so they cannot disagree.
  */
-export function CourseExplorerScreen({ courses = COURSES }: CourseExplorerScreenProps) {
+export function CourseExplorerScreen({ courses = COURSES, race = null, raceIsStale = false, onOpenCalculator }: CourseExplorerScreenProps) {
   const [courseId, setCourseId] = useState(courses[0]?.id ?? "");
   const [meters, setMeters] = useState(0);
 
@@ -156,6 +162,8 @@ export function CourseExplorerScreen({ courses = COURSES }: CourseExplorerScreen
           <p className="hint">Drag the slider, or touch the chart. The marker on the map follows.</p>
         </div>
       </section>
+
+      <AdjustedPaceCard course={course} race={race} raceIsStale={raceIsStale} onOpenCalculator={onOpenCalculator} />
 
       <section className="card course-facts-card" aria-labelledby="facts-heading">
         <h2 id="facts-heading" className="group-title">
