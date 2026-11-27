@@ -93,3 +93,45 @@ describe("John Hunt Park: what was extracted from the supplied Garmin GPX", () =
     expect(course.notes.join(" ")).toMatch(/not a measured or official race course/);
   });
 });
+
+describe("the five courses added from the coach's Garmin GPX files", () => {
+  // Expected values come from a separate Python reading of each original file: point count, the file's own elevations,
+  // a haversine (spherical) length, and the file's SHA-256. The app uses ellipsoidal distance, so lengths agree to about 0.1%.
+  const facts = {
+    "bell-buckle": { file: "bell_buckle.gpx", points: 1172, haversine: 4986.9, min: 259.4, max: 278, start: 263.2, end: 268.4, sha: "3355785fb581367490833ac16227817ba8ae0d4d02ec30fecb118f85b3aa5891" },
+    "jesse-owens-park": { file: "jessie_owens_park.gpx", points: 1215, haversine: 4077.7, min: 195.8, max: 224, start: 199, end: 199.4, sha: "478c2fe5a26b05cb37cf99c5879d1d811888d74762bf6f0987d8fc40d03aa260" },
+    "kentucky-run-for-gold": { file: "ketucky_run_for_gold.gpx", points: 1236, haversine: 5073.8, min: 197.2, max: 237.6, start: 212.2, end: 199.6, sha: "741cb244592fffe7bb49d63f28a2e96ce2d46432cdd644e931ea735ce2fc86c2" },
+    "murfreesboro-classic": { file: "murfersboro_classic.gpx", points: 1243, haversine: 5081.2, min: 161, max: 187, start: 183.8, end: 172.2, sha: "a74720f755e0135d26c60cfc80d896f250e52a815b076712a772ff839f276b69" },
+    "tn-regionals": { file: "tn_regionals.gpx", points: 1161, haversine: 5093.8, min: 137.4, max: 158.4, start: 141.4, end: 153, sha: "7f4ccc7b389c319ff228ecabf8f326562cca9a0da1b4f07d15d8fe9230c8f74c" },
+  } as const;
+
+  describe.each(Object.entries(facts))("%s", (id, f) => {
+    const course = getCourse(id)!;
+
+    it("keeps the original GPX byte for byte, and records its fingerprint", () => {
+      const original = readFileSync(join("courses", id, f.file));
+      expect(createHash("sha256").update(original).digest("hex")).toBe(f.sha);
+      expect(course.source.sha256).toBe(f.sha);
+    });
+
+    it("has every recorded point and the file's own elevations", () => {
+      expect(course.points).toHaveLength(f.points);
+      expect(course.elevation).toMatchObject({ minMeters: f.min, maxMeters: f.max, startMeters: f.start, endMeters: f.end });
+    });
+
+    it("measures the length of the track (within 0.3% of an independent spherical calculation)", () => {
+      expect(Math.abs(course.distanceMeters - f.haversine) / f.haversine).toBeLessThan(0.003);
+    });
+
+    it("has no unrecorded gaps (the watch logged every second, at most one 2-second step)", () => {
+      expect(course.gaps).toEqual([]);
+    });
+  });
+
+  it("all but Jesse Owens Park are about a 5K (within 3%); Jesse Owens Park is 2.53 mi and will not match a 5K", () => {
+    for (const id of ["bell-buckle", "kentucky-run-for-gold", "murfreesboro-classic", "tn-regionals", "john-hunt-park"]) {
+      expect(Math.abs(getCourse(id)!.distanceMeters - 5000) / 5000).toBeLessThanOrEqual(0.03);
+    }
+    expect(getCourse("jesse-owens-park")!.distanceMeters).toBeLessThan(4100);
+  });
+});

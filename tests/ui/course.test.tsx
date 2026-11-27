@@ -171,8 +171,22 @@ describe("the John Hunt Park course screen", () => {
   });
 
   it("offers no course picker when there is only one course", () => {
-    render(<CourseExplorerScreen />);
+    render(<CourseExplorerScreen courses={[COURSES[0]!]} />);
     expect(screen.queryByLabelText("Course")).not.toBeInTheDocument();
+  });
+
+  it("with several courses, lists every one by name, starts on John Hunt Park, and switches the whole screen", async () => {
+    const user = userEvent.setup();
+    render(<CourseExplorerScreen />);
+    const picker = screen.getByLabelText("Course");
+    expect(within(picker).getAllByRole("option").map((o) => o.textContent)).toEqual(COURSES.map((c) => c.name));
+    expect(COURSES.length).toBeGreaterThan(1);
+    expect(screen.getByRole("heading", { level: 2, name: "John Hunt Park" })).toBeInTheDocument();
+
+    await user.selectOptions(picker, "tn-regionals");
+    expect(screen.getByRole("heading", { level: 2, name: "TN Regionals" })).toBeInTheDocument();
+    expect(slider()).toHaveValue("0"); // the position goes back to the start of the new course
+    expect(readout("distance")).toHaveTextContent("0.00 mi 0.00 km");
   });
 });
 
