@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { COURSES } from "../../src/courses";
 import { elevationColor, elevationFraction, elevationHue, elevationRuns, routeParts } from "../../src/courses/route";
+import { GAP_RECORDING } from "../fixtures/gapRecording";
 import { tinyCourse } from "./helpers";
 
 describe("elevation colors: lowest red, highest green, a gradient between", () => {
@@ -87,9 +88,10 @@ describe("elevationRuns on the John Hunt Park data", () => {
   const runs = elevationRuns(course);
   const hueOf = (color: string) => Number(/hsl\((\d+),/.exec(color)![1]);
 
-  it("covers every recorded step exactly once and skips only the one gap step", () => {
+  it("covers every recorded step exactly once (this recording has no gap)", () => {
+    expect(course.gaps).toEqual([]);
     const steps = runs.reduce((sum, run) => sum + run.points.length - 1, 0);
-    expect(steps).toBe(course.points.length - 1 - 1); // 1189 steps, minus the gap's single step
+    expect(steps).toBe(course.points.length - 1); // 1352 steps for 1353 points
   });
 
   it("draws fewer lines than there are steps, using whole-5-degree hues", () => {
@@ -111,7 +113,6 @@ describe("elevationRuns on the John Hunt Park data", () => {
     let lowest = { ele: Infinity, i: 0 };
     let highest = { ele: -Infinity, i: 0 };
     for (let i = 0; i < course.points.length - 1; i++) {
-      if (course.gaps.some((g) => course.points[i]![3] >= g.startMeters && course.points[i + 1]![3] <= g.endMeters)) continue;
       const avg = (course.points[i]![2] + course.points[i + 1]![2]) / 2;
       if (avg < lowest.ele) lowest = { ele: avg, i };
       if (avg > highest.ele) highest = { ele: avg, i };
@@ -121,21 +122,36 @@ describe("elevationRuns on the John Hunt Park data", () => {
       const run = runs.find((r) => r.points.some((p) => p[0] === target[0] && p[1] === target[1]));
       return run!.color;
     };
-    expect(minMeters).toBe(183);
-    expect(maxMeters).toBe(206.2);
+    expect(minMeters).toBe(185.4);
+    expect(maxMeters).toBe(210.6);
     expect(hueOf(colorAt(lowest.i))).toBeLessThanOrEqual(15); // essentially red
     expect(hueOf(colorAt(highest.i))).toBeGreaterThanOrEqual(110); // essentially green
   });
 
-  it("is continuous: each run starts exactly where the previous one stopped (except across the gap)", () => {
+  it("is continuous: each run starts exactly where the previous one stopped", () => {
+    for (let i = 1; i < runs.length; i++) {
+      const prevEnd = runs[i - 1]!.points[runs[i - 1]!.points.length - 1]!;
+      expect(runs[i]!.points[0]).toEqual(prevEnd);
+    }
+  });
+});
+
+describe("elevationRuns on a real recording with a gap (the saved October 17 run, kept as a test fixture)", () => {
+  const course = GAP_RECORDING;
+  const runs = elevationRuns(course);
+
+  it("skips only the one gap step", () => {
+    const steps = runs.reduce((sum, run) => sum + run.points.length - 1, 0);
+    expect(steps).toBe(course.points.length - 1 - 1); // 1189 steps, minus the gap's single step
+  });
+
+  it("is continuous except across the gap", () => {
+    let breaks = 0;
     for (let i = 1; i < runs.length; i++) {
       const prevEnd = runs[i - 1]!.points[runs[i - 1]!.points.length - 1]!;
       const start = runs[i]!.points[0]!;
-      const startsAfterGap = start[0] !== prevEnd[0] || start[1] !== prevEnd[1];
-      if (startsAfterGap) {
-        // The only allowed break is the recorded gap.
-        expect(course.gaps).toHaveLength(1);
-      }
+      if (start[0] !== prevEnd[0] || start[1] !== prevEnd[1]) breaks++;
     }
+    expect(breaks).toBe(1);
   });
 });

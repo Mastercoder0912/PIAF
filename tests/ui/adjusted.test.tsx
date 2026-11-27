@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "../../src/App";
 import { AdjustedPaceCard } from "../../src/components/AdjustedPaceCard";
 import { COURSES } from "../../src/courses";
+import { GAP_RECORDING } from "../fixtures/gapRecording";
 import { calculateRace, type RaceCalculation } from "../../src/engine";
 import { describeDifference, formatPacePerMile, formatSigned, formatSpan } from "../../src/adjust/format";
 import "./setup";
@@ -60,7 +61,7 @@ describe("AdjustedPaceCard", () => {
 
   it("for a race of a different length, explains why there is no estimate and shows no numbers", () => {
     render(<AdjustedPaceCard course={jhp} race={race(10000, 2400)} />);
-    expect(screen.getByTestId("estimate-mismatch")).toHaveTextContent("This course is 3.13 mi long and your race is 6.21 mi");
+    expect(screen.getByTestId("estimate-mismatch")).toHaveTextContent("This course is 3.16 mi long and your race is 6.21 mi");
     expect(screen.queryByTestId("estimated-pace")).toBeNull();
     expect(screen.queryByRole("table")).toBeNull();
   });
@@ -78,9 +79,9 @@ describe("AdjustedPaceCard", () => {
     it("keeps the original target pace and finish visible next to the estimated pace", () => {
       expect(screen.getByTestId("original-pace")).toHaveTextContent("6:26 /mi");
       expect(screen.getByText("Finish 20:00.0")).toBeInTheDocument();
-      expect(screen.getByTestId("estimated-pace")).toHaveTextContent("6:38 /mi");
-      expect(screen.getByText("Finish about 20:38")).toBeInTheDocument();
-      expect(screen.getByTestId("estimate-difference")).toHaveTextContent("About 38 seconds slower than the flat target (3.2%).");
+      expect(screen.getByTestId("estimated-pace")).toHaveTextContent("6:30 /mi");
+      expect(screen.getByText("Finish about 20:12")).toBeInTheDocument();
+      expect(screen.getByTestId("estimate-difference")).toHaveTextContent("About 12 seconds slower than the flat target (1.0%).");
     });
 
     it("shows projected splits in their own table, with the engine's flat target beside each estimate", () => {
@@ -93,10 +94,11 @@ describe("AdjustedPaceCard", () => {
           return [cells[0]!.textContent, cells[1]!.textContent, cells[2]!.querySelector(".estimate-time")!.textContent, cells[2]!.querySelector(".estimate-leg")!.textContent];
         });
       expect(rows).toEqual([
-        ["1 mile", "6:26.2", "≈ 6:39", "6:39 /mi"],
-        ["2 miles", "12:52.5", "≈ 13:23", "6:44 /mi"],
-        ["3 miles", "19:18.7", "≈ 19:58", "6:35 /mi"],
-        ["5000 mFinish", "20:00.0", "≈ 20:38", "6:14 /mi"],
+        // From a separate Python calculation: 387.98, 777.22, 1171.93 and 1212.13 s; leg paces 387.98, 389.24, 394.71, 376.17 s/mi.
+        ["1 mile", "6:26.2", "≈ 6:28", "6:28 /mi"],
+        ["2 miles", "12:52.5", "≈ 12:57", "6:29 /mi"],
+        ["3 miles", "19:18.7", "≈ 19:32", "6:35 /mi"],
+        ["5000 mFinish", "20:00.0", "≈ 20:12", "6:16 /mi"],
       ]);
       expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Distance", "Flat target", "Estimate"]);
     });
@@ -108,8 +110,16 @@ describe("AdjustedPaceCard", () => {
       expect(details).toHaveAttribute("open");
       expect(details).toHaveTextContent("3.4% slower for each 1%");
       expect(details).toHaveTextContent("surface, turns, wind or heat");
-      expect(details).toHaveTextContent("About 5% of the route");
+      expect(details).not.toHaveTextContent("where nothing was recorded"); // this recording has no gap
     });
+  });
+
+  it("on a recording with an unrecorded stretch, says so in the explanation", async () => {
+    render(<AdjustedPaceCard course={GAP_RECORDING} race={race(5000, 1200)} />);
+    expect(screen.getByTestId("estimated-pace")).toHaveTextContent("6:38 /mi");
+    expect(screen.getByText("Finish about 20:38")).toBeInTheDocument();
+    await userEvent.click(screen.getByText(/How this estimate works/));
+    expect(screen.getByText(/About 5% of the route/)).toBeInTheDocument();
   });
 
   it("warns when the race was edited after it was calculated", () => {
@@ -128,7 +138,7 @@ describe("in the whole app", () => {
     const before = within(screen.getByRole("table")).getAllByRole("row").map((r) => r.textContent);
 
     await user.click(screen.getByRole("button", { name: "Explore a Course" }));
-    expect(screen.getByTestId("estimated-pace")).toHaveTextContent("6:38 /mi");
+    expect(screen.getByTestId("estimated-pace")).toHaveTextContent("6:30 /mi");
     expect(screen.getByTestId("original-pace")).toHaveTextContent("6:26 /mi");
 
     await user.click(screen.getByRole("button", { name: "Race Pacer" }));
@@ -152,14 +162,14 @@ describe("in the whole app", () => {
     await user.type(screen.getByLabelText("Expected completion time"), "20:00");
     await user.click(screen.getByRole("button", { name: "Calculate" }));
     await user.click(screen.getByRole("button", { name: "Explore a Course" }));
-    expect(screen.getByText("Finish about 20:38")).toBeInTheDocument();
+    expect(screen.getByText("Finish about 20:12")).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Race Pacer" }));
     await user.clear(screen.getByLabelText("Expected completion time"));
     await user.type(screen.getByLabelText("Expected completion time"), "25:00");
     await user.click(screen.getByRole("button", { name: "Calculate" }));
     await user.click(screen.getByRole("button", { name: "Explore a Course" }));
-    // 25:00 flat x the same hill effect (1238.058 / 1200 = 1.031715...) = 1547.57 s = 25:48.
-    expect(screen.getByText("Finish about 25:48")).toBeInTheDocument();
+    // 25:00 flat x the same hill effect (1212.131 / 1200 = 1.010109) = 1515.16 s = 25:15.
+    expect(screen.getByText("Finish about 25:15")).toBeInTheDocument();
   });
 });

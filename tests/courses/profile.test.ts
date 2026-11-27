@@ -86,14 +86,14 @@ describe("buildProfile on a hand-made course", () => {
 describe("buildProfile on the John Hunt Park data", () => {
   const course = COURSES.find((c) => c.id === "john-hunt-park")!;
 
-  it("uses whole-mile ticks (0 to 3 for a 3.13 mi run) and 20 ft elevation ticks from 600 to 680 ft", () => {
-    // Elevation 183.0..206.2 m = 600.4..676.5 ft: span 76 ft -> 20 ft steps (76/10 = 7.6 is over 4), rounded out to 600..680.
+  it("uses whole-mile ticks (0 to 3 for a 3.16 mi run) and 25 ft elevation ticks from 600 to 700 ft", () => {
+    // Elevation 185.4..210.6 m = 608.3..690.9 ft: span 82.7 ft. 20 ft steps would need 82.7/20 = 4.1 ticks (over 4), so 25 ft; rounded out to 600..700.
     const profile = buildProfile(course, { width: 340, height: 220, margin: { top: 12, right: 12, bottom: 30, left: 44 } });
     expect(profile.xTicks.map((t) => t.label)).toEqual(["0", "1", "2", "3"]);
-    expect(profile.yTicks.map((t) => t.label)).toEqual(["600", "620", "640", "660", "680"]);
+    expect(profile.yTicks.map((t) => t.label)).toEqual(["600", "625", "650", "675", "700"]);
   });
 
-  it("fits all 1190 points inside the chart at several widths", () => {
+  it("fits all 1353 points inside the chart at several widths", () => {
     for (const width of [280, 320, 390, 600, 1000]) {
       const profile = buildProfile(course, { width, height: 220, margin: { top: 12, right: 12, bottom: 30, left: 44 } });
       expect(profile.linePath.match(/L/g)).toHaveLength(course.points.length - 1);

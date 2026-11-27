@@ -60,18 +60,32 @@ describe("Compare Courses screen", () => {
     expect(screen.getByTestId("entered-total")).toHaveTextContent("Total: 19:39.3");
     expect(screen.getByTestId("old-total")).toHaveTextContent("19:39.3");
     // Worked out separately in Python: the climb is a steady 2% (factor 1.0764); John Hunt Park's four stretches
-    // have factors 1.0341, 1.0454, 1.0222 and 0.9694 (the same rule). New leg = old leg x new factor / 1.0764.
-    expect(screen.getByTestId("new-total")).toHaveTextContent("about 18:50"); // 339.53 + 359.64 + 398.40 + 32.51 = 1130.07 s
-    expect(screen.getByTestId("compare-difference")).toHaveTextContent("About 49 seconds faster on John Hunt Park than on Test Climb 5K (4.2%).");
+    // have factors 1.0045, 1.0078, 1.0219 and 0.9739 (the same rule). New leg = old leg x new factor / 1.0764.
+    expect(screen.getByTestId("new-total")).toHaveTextContent("about 18:27"); // 329.80 + 346.69 + 398.27 + 32.66 = 1107.42 s
+    expect(screen.getByTestId("compare-difference")).toHaveTextContent("About 1 min 12 s faster on John Hunt Park than on Test Climb 5K (6.1%).");
     const table = screen.getByRole("table");
     const rows = within(table).getAllByRole("row").slice(1).map((row) => [row.querySelector(".distance-text")!.textContent, row.querySelectorAll(".estimate-time")[0]!.textContent, row.querySelectorAll(".estimate-time")[1]!.textContent]);
     expect(rows).toEqual([
-      ["Start to 1 mile", "5:53.4", "≈ 5:40"],
-      ["1 mile to 2 miles", "6:10.3", "≈ 6:00"],
+      ["Start to 1 mile", "5:53.4", "≈ 5:30"],
+      ["1 mile to 2 miles", "6:10.3", "≈ 5:47"],
       ["2 miles to 3 miles", "6:59.5", "≈ 6:38"],
       ["3 miles to the finish", "0:36.1", "≈ 0:33"],
     ]);
     expect(within(table).getByText("3 miles to the finish")).toBeInTheDocument();
+  });
+
+  it("the coach's own example: a 19:39.3 Hermitage 5K moved to John Hunt Park, on the real bundled courses", async () => {
+    const user = userEvent.setup();
+    render(<CompareCoursesScreen courses={COURSES} />);
+    await user.selectOptions(screen.getByLabelText(/Old course/), "hermitage");
+    await user.selectOptions(screen.getByLabelText(/New course/), "john-hunt-park");
+    await enterTimes(user, ["5:53.4", "6:10.3", "6:59.5", "0:36.1"]);
+    // Separate Python calculation: Hermitage leg factors 1.0405, 1.0172, 1.0184, 1.0970; John Hunt Park 1.0045, 1.0078, 1.0219, 0.9739.
+    // New legs 341.19 + 366.87 + 420.96 + 32.05 = 1161.07 s = 19:21.1, which is 18.2 s (1.5%) faster than 1179.3 s.
+    expect(screen.getByTestId("new-total")).toHaveTextContent("about 19:21");
+    expect(screen.getByTestId("compare-difference")).toHaveTextContent("About 18 seconds faster on John Hunt Park than on Hermitage (1.5%).");
+    const rows = within(screen.getByRole("table")).getAllByRole("row").slice(1).map((row) => row.querySelectorAll(".estimate-time")[1]!.textContent);
+    expect(rows).toEqual(["≈ 5:41", "≈ 6:07", "≈ 7:01", "≈ 0:32"]);
   });
 
   it("choosing the same course on both sides changes nothing", async () => {
@@ -110,7 +124,7 @@ describe("Compare Courses screen", () => {
     render(<CompareCoursesScreen courses={both} />);
     await user.clear(screen.getByLabelText("Distance"));
     await user.type(screen.getByLabelText("Distance"), "10");
-    expect(screen.getByTestId("compare-mismatch")).toHaveTextContent("is 3.13 mi long and your race is 6.21 mi");
+    expect(screen.getByTestId("compare-mismatch")).toHaveTextContent("is 3.16 mi long and your race is 6.21 mi");
     expect(screen.queryByLabelText(/^Start to/)).toBeNull();
   });
 
