@@ -9,6 +9,7 @@ import { useWeather } from "./state/useWeather";
 import { WeatherCard } from "./components/WeatherCard";
 import { useLocations } from "./state/useLocations";
 import { sessionPhase } from "./live/session";
+import { Analytics } from "@vercel/analytics/next"
 
 type Screen = "calculator" | "pacer";
 /** The two top-level modes. Race Pacer is everything that existed before; Explore a Course is separate. */
