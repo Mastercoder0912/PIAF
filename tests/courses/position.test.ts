@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { clampDistance, positionAt } from "../../src/courses/position";
 import { COURSES } from "../../src/courses";
+import { GAP_RECORDING } from "../fixtures/gapRecording";
 import { tinyCourse } from "./helpers";
 
 // tinyCourse: straight line north, points at 0, 100, 200, 300 m; elevation 10, 20, 10, 10; gap from 100 to 200 m.
@@ -117,10 +118,28 @@ describe("positionAt on the real John Hunt Park data", () => {
     }
   });
 
-  it("moves continuously: 1 m of course is never more than about 1.5 m on the ground (except across the gap)", () => {
-    // A marker must not jump when the slider moves a little. Outside the gap, steps of 1 m of course
-    // distance must move the marker about 1 m (straight lines between points can only be shorter).
+  it("moves continuously: 1 m of course is never more than about 1.5 m on the ground", () => {
+    // A marker must not jump when the slider moves a little: steps of 1 m of course distance must move the marker
+    // about 1 m (straight lines between points can only be shorter).
     const metersPerDegreeLat = 110950; // near 34.7 N
+    const metersPerDegreeLon = 91880;
+    expect(course.gaps).toEqual([]);
+    let previous = positionAt(course, 0);
+    for (let d = 1; d <= course.distanceMeters; d += 1) {
+      const p = positionAt(course, d);
+      const jump = Math.hypot((p.lat - previous.lat) * metersPerDegreeLat, (p.lon - previous.lon) * metersPerDegreeLon);
+      expect(jump).toBeLessThan(1.5);
+      expect(p.inGap).toBe(false);
+      previous = p;
+    }
+  });
+});
+
+describe("positionAt across a real recording gap (the saved October 17 run, kept as a test fixture)", () => {
+  const course = GAP_RECORDING;
+
+  it("moves continuously outside the gap", () => {
+    const metersPerDegreeLat = 110950;
     const metersPerDegreeLon = 91880;
     const gap = course.gaps[0]!;
     let previous = positionAt(course, 0);
@@ -134,6 +153,7 @@ describe("positionAt on the real John Hunt Park data", () => {
 
   it("flags exactly the middle of the recorded gap", () => {
     const gap = course.gaps[0]!;
+    expect(gap).toEqual({ startMeters: 703.9, endMeters: 871.2, seconds: 41 });
     expect(positionAt(course, (gap.startMeters + gap.endMeters) / 2).inGap).toBe(true);
     expect(positionAt(course, gap.startMeters - 1).inGap).toBe(false);
     expect(positionAt(course, gap.endMeters + 1).inGap).toBe(false);

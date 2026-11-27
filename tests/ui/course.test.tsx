@@ -6,6 +6,7 @@ import App from "../../src/App";
 import { COURSES } from "../../src/courses";
 import { CourseExplorerScreen } from "../../src/screens/CourseExplorerScreen";
 import type { CourseData } from "../../src/courses/types";
+import { GAP_RECORDING } from "../fixtures/gapRecording";
 import { tinyCourse } from "../courses/helpers";
 import "./setup";
 
@@ -150,24 +151,25 @@ describe("the John Hunt Park course screen", () => {
     render(<CourseExplorerScreen />);
     const facts = within(screen.getByRole("region", { name: "About this route" }));
     const valueOf = (label: string) => facts.getByText(label, { selector: "dt" }).nextElementSibling?.textContent;
-    expect(valueOf("Total distance")).toBe("3.13 mi (5.03 km)");
-    expect(valueOf("Elevation gain")).toBe("251 ft (77 m)");
-    expect(valueOf("Elevation loss")).toBe("310 ft (95 m)");
-    expect(valueOf("Highest point")).toBe("677 ft (206.2 m)");
-    expect(valueOf("Lowest point")).toBe("600 ft (183.0 m)");
+    // From the file itself: 5092.4 m = 3.164 mi; gain 39.3 m = 128.9 ft; loss 57.8 m = 189.6 ft; 210.6 m = 690.9 ft; 185.4 m = 608.3 ft.
+    expect(valueOf("Total distance")).toBe("3.16 mi (5.09 km)");
+    expect(valueOf("Elevation gain")).toBe("129 ft (39 m)");
+    expect(valueOf("Elevation loss")).toBe("190 ft (58 m)");
+    expect(valueOf("Highest point")).toBe("691 ft (210.6 m)");
+    expect(valueOf("Lowest point")).toBe("608 ft (185.4 m)");
   });
 
-  it("tells the coach about the recording gap, that gain/loss are estimates, and where the data came from", () => {
+  it("tells the coach that gain/loss are estimates and where the data came from, with no gap note (this recording has no gap)", () => {
     render(<CourseExplorerScreen />);
     const facts = screen.getByRole("region", { name: "About this route" });
-    expect(facts).toHaveTextContent("Nothing was recorded for 167 m (about 41 seconds) between mile 0.44 and mile 0.54");
     expect(facts).toHaveTextContent(/Gain and loss: .*An estimate from a watch's elevation sensor/);
-    expect(facts).toHaveTextContent("Source: Garmin recording from October 17, 2026, 1190 recorded points.");
+    expect(facts).toHaveTextContent("Source: Garmin recording from October 19, 2024, 1353 recorded points.");
+    expect(facts).not.toHaveTextContent("Nothing was recorded for");
   });
 
-  it("explains the dashed line on the map", () => {
+  it("has no dashed-line legend, because nothing is missing from the recording", () => {
     render(<CourseExplorerScreen />);
-    expect(screen.getByText(/Dashed: nothing was recorded here/)).toBeInTheDocument();
+    expect(screen.queryByText(/Dashed: nothing was recorded here/)).not.toBeInTheDocument();
   });
 
   it("offers no course picker when there is only one course", () => {
@@ -183,8 +185,8 @@ describe("the John Hunt Park course screen", () => {
     expect(COURSES.length).toBeGreaterThan(1);
     expect(screen.getByRole("heading", { level: 2, name: "John Hunt Park" })).toBeInTheDocument();
 
-    await user.selectOptions(picker, "tn-regionals");
-    expect(screen.getByRole("heading", { level: 2, name: "TN Regionals" })).toBeInTheDocument();
+    await user.selectOptions(picker, "hermitage");
+    expect(screen.getByRole("heading", { level: 2, name: "Hermitage" })).toBeInTheDocument();
     expect(slider()).toHaveValue("0"); // the position goes back to the start of the new course
     expect(readout("distance")).toHaveTextContent("0.00 mi 0.00 km");
   });
@@ -195,9 +197,10 @@ describe("synchronisation: slider, readouts, map and profile are one position", 
     render(<CourseExplorerScreen />);
     expect(slider()).toHaveValue("0");
     expect(readout("distance")).toHaveTextContent("0.00 mi 0.00 km");
+    // The watch logged three points before moving (204.0, 203.8, 203.8 m, all at 0 m); the screen uses the last of them.
     expect(readout("elevation")).toHaveTextContent("669 ft 203.8 m");
-    expect(Number(map().dataset.lat)).toBeCloseTo(34.684907, 6);
-    expect(Number(map().dataset.lon)).toBeCloseTo(-86.587065, 6);
+    expect(Number(map().dataset.lat)).toBeCloseTo(34.68488, 6);
+    expect(Number(map().dataset.lon)).toBeCloseTo(-86.587108, 6);
     expect(Number(cursor().getAttribute("x1"))).toBeCloseTo(PLOT_LEFT, 6);
   });
 
@@ -216,22 +219,22 @@ describe("synchronisation: slider, readouts, map and profile are one position", 
 
   it("the chart dot rides the elevation line: higher ground is higher on screen", () => {
     render(<CourseExplorerScreen />);
-    moveSlider(700); // near the 206 m high point
+    moveSlider(700); // at the 210.6 m high point (692.6 m along)
     const high = Number(dot().getAttribute("cy"));
-    moveSlider(1400); // near the 184 m low
+    moveSlider(5090); // at the 185.4 m low point (5090.7 m along)
     const low = Number(dot().getAttribute("cy"));
     expect(high).toBeLessThan(low); // smaller y is higher up
   });
 
   it("reaches the very end: the slider's last stop is the full course distance, at the last recorded point", () => {
     render(<CourseExplorerScreen />);
-    expect(slider()).toHaveAttribute("max", "5035"); // 5033.7 m rounded up to the next 5 m step
-    moveSlider(5035);
-    expect(readout("distance")).toHaveTextContent("3.13 mi 5.03 km");
+    expect(slider()).toHaveAttribute("max", "5095"); // 5092.4 m rounded up to the next 5 m step
+    moveSlider(5095);
+    expect(readout("distance")).toHaveTextContent("3.16 mi 5.09 km");
     const last = jhp.points[jhp.points.length - 1]!;
     expect(Number(map().dataset.lat)).toBeCloseTo(last[0], 9);
     expect(Number(map().dataset.lon)).toBeCloseTo(last[1], 9);
-    expect(readout("elevation")).toHaveTextContent("610 ft 185.8 m");
+    expect(readout("elevation")).toHaveTextContent("608 ft 185.4 m");
     expect(Number(cursor().getAttribute("x1"))).toBeCloseTo(PLOT_LEFT + PLOT_WIDTH, 6);
   });
 
@@ -240,7 +243,7 @@ describe("synchronisation: slider, readouts, map and profile are one position", 
     moveSlider(3000);
     moveSlider(0);
     expect(readout("distance")).toHaveTextContent("0.00 mi");
-    expect(Number(map().dataset.lat)).toBeCloseTo(34.684907, 6);
+    expect(Number(map().dataset.lat)).toBeCloseTo(34.68488, 6);
   });
 
   it("the slider announces the same thing the readouts show", () => {
@@ -277,7 +280,7 @@ describe("synchronisation: slider, readouts, map and profile are one position", 
     fireEvent(svg(), new MouseEvent("pointerdown", { clientX: -500, bubbles: true }));
     expect(readout("distance")).toHaveTextContent("0.00 mi");
     fireEvent(svg(), new MouseEvent("pointermove", { clientX: 5000, bubbles: true }));
-    expect(readout("distance")).toHaveTextContent("3.13 mi 5.03 km");
+    expect(readout("distance")).toHaveTextContent("3.16 mi 5.09 km");
   });
 
   it("a cancelled touch (the page started scrolling) stops the drag", () => {
@@ -290,9 +293,19 @@ describe("synchronisation: slider, readouts, map and profile are one position", 
   });
 });
 
-describe("the recording gap", () => {
+describe("the recording gap (a real recording that has one: the saved October 17 run, kept as a test fixture)", () => {
+  const gapCourse = GAP_RECORDING;
+
+  it("tells the coach about the gap and explains the dashed line", () => {
+    render(<CourseExplorerScreen courses={[gapCourse]} />);
+    const facts = screen.getByRole("region", { name: "About this route" });
+    expect(facts).toHaveTextContent("Nothing was recorded for 167 m (about 41 seconds) between mile 0.44 and mile 0.54");
+    expect(facts).toHaveTextContent("Source: Garmin recording from October 17, 2026, 1190 recorded points.");
+    expect(screen.getByText(/Dashed: nothing was recorded here/)).toBeInTheDocument();
+  });
+
   it("says the position is an estimate inside the gap, flags the map and the chart dot, and clears outside it", () => {
-    render(<CourseExplorerScreen />);
+    render(<CourseExplorerScreen courses={[gapCourse]} />);
     moveSlider(800); // inside 703.9 to 871.2 m
     expect(screen.getByText(/Nothing was recorded at this spot, so the position and elevation are estimates/)).toBeInTheDocument();
     expect(map().dataset.ingap).toBe("true");
@@ -305,10 +318,18 @@ describe("the recording gap", () => {
   });
 
   it("marks the gap on the profile at the right place", () => {
-    render(<CourseExplorerScreen />);
+    render(<CourseExplorerScreen courses={[gapCourse]} />);
     const band = screen.getByTestId("profile-gap");
-    expect(Number(band.getAttribute("x"))).toBeCloseTo(PLOT_LEFT + (703.9 / jhp.distanceMeters) * PLOT_WIDTH, 6);
-    expect(Number(band.getAttribute("width"))).toBeCloseTo(((871.2 - 703.9) / jhp.distanceMeters) * PLOT_WIDTH, 6);
+    expect(Number(band.getAttribute("x"))).toBeCloseTo(PLOT_LEFT + (703.9 / gapCourse.distanceMeters) * PLOT_WIDTH, 6);
+    expect(Number(band.getAttribute("width"))).toBeCloseTo(((871.2 - 703.9) / gapCourse.distanceMeters) * PLOT_WIDTH, 6);
+  });
+
+  it("the real John Hunt Park recording has no gap: no marker on the profile, never 'in a gap'", () => {
+    render(<CourseExplorerScreen />);
+    expect(screen.queryByTestId("profile-gap")).not.toBeInTheDocument();
+    moveSlider(800);
+    expect(map().dataset.ingap).toBe("false");
+    expect(screen.queryByText(/Nothing was recorded at this spot/)).not.toBeInTheDocument();
   });
 });
 

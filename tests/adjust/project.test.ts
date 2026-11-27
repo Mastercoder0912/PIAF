@@ -4,6 +4,7 @@ import type { RaceCalculation, RaceConfig } from "../../src/engine";
 import { COURSE_MATCH_TOLERANCE, gradeAt, legFactor, matchesCourse, projectRace } from "../../src/adjust/project";
 import { COURSES } from "../../src/courses";
 import type { CourseData } from "../../src/courses/types";
+import { GAP_RECORDING } from "../fixtures/gapRecording";
 import { tinyCourse } from "../courses/helpers";
 
 function race(config: RaceConfig): RaceCalculation {
@@ -45,8 +46,8 @@ describe("matchesCourse", () => {
     expect(matchesCourse(1030, 1000)).toBe(true);
     expect(matchesCourse(969, 1000)).toBe(false);
     expect(matchesCourse(1031, 1000)).toBe(false);
-    expect(matchesCourse(5000, 5033.7)).toBe(true); // a 5K on John Hunt Park
-    expect(matchesCourse(1609.344, 5033.7)).toBe(false); // a mile race is not this course
+    expect(matchesCourse(5000, 5092.4)).toBe(true); // a 5K on John Hunt Park
+    expect(matchesCourse(1609.344, 5092.4)).toBe(false); // a mile race is not this course
     expect(matchesCourse(10000, 0)).toBe(false);
   });
 });
@@ -175,10 +176,15 @@ describe("projectRace on the John Hunt Park run (a 20:00 5K)", () => {
   const result = projectRace(flat, course);
   if (result.kind !== "ok") throw new Error("expected ok");
 
-  it("estimates a finish a few percent slower than the flat target, because it has about 77 m of climbing", () => {
-    expect(result.estimatedSeconds).toBeGreaterThan(1200 * 1.01);
-    expect(result.estimatedSeconds).toBeLessThan(1200 * 1.08);
-    expect(result.estimatedSeconds).toBeCloseTo(1238.06, 1); // checked against a separate Python calculation
+  it("estimates a finish about 1% slower than the flat target, because it has about 39 m of climbing over 5 km", () => {
+    expect(result.estimatedSeconds).toBeGreaterThan(1200 * 1.005);
+    expect(result.estimatedSeconds).toBeLessThan(1200 * 1.02);
+    expect(result.estimatedSeconds).toBeCloseTo(1212.13, 1); // checked against a separate Python calculation
+  });
+
+  it("matches the separate calculation leg by leg (factors 1.0045, 1.0078, 1.0219, 0.9739)", () => {
+    const expected = [1.0045, 1.0078, 1.0219, 0.9739];
+    result.rows.forEach((row, i) => expect(row.legFactor).toBeCloseTo(expected[i]!, 3));
   });
 
   it("has one row per engine split, the finish last, with estimated times that only go up", () => {
@@ -195,9 +201,8 @@ describe("projectRace on the John Hunt Park run (a 20:00 5K)", () => {
     }
   });
 
-  it("reports that about 5% of the route (the unrecorded stretch and its neighbourhood) was treated as flat", () => {
-    expect(result.unrecordedShare).toBeGreaterThan(0.03);
-    expect(result.unrecordedShare).toBeLessThan(0.08);
+  it("reports that none of the route had to be treated as flat (the recording has no gap)", () => {
+    expect(result.unrecordedShare).toBe(0);
   });
 
   it("the leg times add up to the estimated total", () => {
@@ -208,5 +213,22 @@ describe("projectRace on the John Hunt Park run (a 20:00 5K)", () => {
       previous = row.estimatedSeconds;
     }
     expect(sum).toBeCloseTo(result.estimatedSeconds, 9);
+  });
+});
+
+describe("projectRace on a real recording with a gap (the saved October 17 run, kept as a test fixture)", () => {
+  const flat = race({ totalDistanceMeters: 5000, targetTimeSeconds: 1200, intervalMode: "automatic" });
+  const result = projectRace(flat, GAP_RECORDING);
+  if (result.kind !== "ok") throw new Error("expected ok");
+
+  it("estimates 1238.06 s, as an independent Python calculation does (factors 1.0341, 1.0454, 1.0223, 0.9695)", () => {
+    expect(result.estimatedSeconds).toBeCloseTo(1238.06, 1);
+    const expected = [1.0341, 1.0454, 1.0223, 0.9695];
+    result.rows.forEach((row, i) => expect(row.legFactor).toBeCloseTo(expected[i]!, 3));
+  });
+
+  it("reports that about 5% of the route (the unrecorded stretch and its neighbourhood) was treated as flat", () => {
+    expect(result.unrecordedShare).toBeGreaterThan(0.03);
+    expect(result.unrecordedShare).toBeLessThan(0.08);
   });
 });

@@ -1,9 +1,9 @@
 import bellBuckle from "./data/bell-buckle.json";
+import hermitage from "./data/hermitage.json";
 import jesseOwensPark from "./data/jesse-owens-park.json";
 import johnHuntPark from "./data/john-hunt-park.json";
 import kentuckyRunForGold from "./data/kentucky-run-for-gold.json";
 import murfreesboroClassic from "./data/murfreesboro-classic.json";
-import tnRegionals from "./data/tn-regionals.json";
 import type { CourseData } from "./types";
 
 /**
@@ -14,10 +14,10 @@ import type { CourseData } from "./types";
 export const COURSES: readonly CourseData[] = [
   johnHuntPark,
   bellBuckle,
+  hermitage,
   jesseOwensPark,
   kentuckyRunForGold,
   murfreesboroClassic,
-  tnRegionals,
 ] as unknown as readonly CourseData[];
 
 export function getCourse(id: string, courses: readonly CourseData[] = COURSES): CourseData | undefined {

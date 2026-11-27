@@ -44,37 +44,39 @@ describe("every course shipped with the app", () => {
 });
 
 describe("John Hunt Park: what was extracted from the supplied Garmin GPX", () => {
-  // Expected values come from an independent analysis of the file (separate Python parsing, ellipsoidal distances).
+  // Expected values come from an independent analysis of the file (separate Python parsing: point count, the file's own
+  // elevations and times, a spherical length, and a 5-point moving-average gain/loss).
   const course = getCourse("john-hunt-park")!;
-  const original = readFileSync(join("courses", "john-hunt-park", "activity_24759595390.gpx"));
+  const original = readFileSync(join("courses", "john-hunt-park", "activity_17324737500.gpx"));
 
   it("the original GPX in the repository is the file that was supplied, byte for byte", () => {
-    expect(createHash("sha256").update(original).digest("hex")).toBe("c86342865f0c24895332ecd792dcdce89fb880d58bf325aa371cae7482b02385");
+    expect(createHash("sha256").update(original).digest("hex")).toBe("f9833aef3d12c279716f652b511eb15e1d292a65f7a1d0aff95045bbee29f736");
   });
 
-  it("has every recorded point (1190), with the file's own first and last coordinates and elevations", () => {
-    expect(course.points).toHaveLength(1190);
-    expect(course.source.pointCount).toBe(1190);
-    expect(course.points[0]).toEqual([34.684907, -86.587065, 203.8, 0]);
+  it("has every recorded point (1353), with the file's own first and last coordinates and elevations", () => {
+    expect(course.points).toHaveLength(1353);
+    expect(course.source.pointCount).toBe(1353);
+    expect(course.points[0]).toEqual([34.68488, -86.587108, 204, 0]);
     const last = course.points[course.points.length - 1]!;
-    expect(last.slice(0, 3)).toEqual([34.686006, -86.584983, 185.8]);
+    expect(last.slice(0, 3)).toEqual([34.686263, -86.584839, 185.4]);
   });
 
-  it("measures 5,033.7 m (3.13 mi), the ellipsoidal length of the track", () => {
-    expect(course.distanceMeters).toBe(5033.7);
+  it("measures 5,092.4 m (3.16 mi), within 0.1% of the independent spherical length (5,095.1 m)", () => {
+    expect(course.distanceMeters).toBe(5092.4);
+    expect(Math.abs(course.distanceMeters - 5095.1) / 5095.1).toBeLessThan(0.001);
   });
 
-  it("has elevation from 183.0 to 206.2 m, starting at 203.8 m and ending at 185.8 m", () => {
-    expect(course.elevation).toMatchObject({ minMeters: 183, maxMeters: 206.2, startMeters: 203.8, endMeters: 185.8 });
+  it("has elevation from 185.4 to 210.6 m, starting at 204.0 m and ending at 185.4 m", () => {
+    expect(course.elevation).toMatchObject({ minMeters: 185.4, maxMeters: 210.6, startMeters: 204, endMeters: 185.4 });
   });
 
-  it("estimates 76.5 m of climbing and 94.5 m of descending", () => {
-    expect(course.elevation.gainMeters).toBe(76.5);
-    expect(course.elevation.lossMeters).toBe(94.5);
+  it("estimates 39.3 m of climbing and 57.8 m of descending", () => {
+    expect(course.elevation.gainMeters).toBe(39.3);
+    expect(course.elevation.lossMeters).toBe(57.8);
   });
 
-  it("flags the one 41-second GPS/pause gap, about 704 m to 871 m", () => {
-    expect(course.gaps).toEqual([{ startMeters: 703.9, endMeters: 871.2, seconds: 41 }]);
+  it("has no unrecorded gap (the watch logged every second)", () => {
+    expect(course.gaps).toEqual([]);
   });
 
   it("sits in Huntsville: its bounds contain the park's listed parking-lot location (34.68776, -86.58595)", () => {
@@ -86,7 +88,7 @@ describe("John Hunt Park: what was extracted from the supplied Garmin GPX", () =
   });
 
   it("records where it came from", () => {
-    expect(course.source).toMatchObject({ kind: "garmin-gpx", trackName: "Huntsville Running", creator: "Garmin Connect", recordedAt: "2026-10-17T15:00:35.000Z" });
+    expect(course.source).toMatchObject({ kind: "garmin-gpx", trackName: "Huntsville Running", creator: "Garmin Connect", recordedAt: "2024-10-19T15:00:01.000Z" });
   });
 
   it("says plainly that it is one recorded run, not a measured course", () => {
@@ -102,7 +104,7 @@ describe("the five courses added from the coach's Garmin GPX files", () => {
     "jesse-owens-park": { file: "jessie_owens_park.gpx", points: 1215, haversine: 4077.7, min: 195.8, max: 224, start: 199, end: 199.4, sha: "478c2fe5a26b05cb37cf99c5879d1d811888d74762bf6f0987d8fc40d03aa260" },
     "kentucky-run-for-gold": { file: "ketucky_run_for_gold.gpx", points: 1236, haversine: 5073.8, min: 197.2, max: 237.6, start: 212.2, end: 199.6, sha: "741cb244592fffe7bb49d63f28a2e96ce2d46432cdd644e931ea735ce2fc86c2" },
     "murfreesboro-classic": { file: "murfersboro_classic.gpx", points: 1243, haversine: 5081.2, min: 161, max: 187, start: 183.8, end: 172.2, sha: "a74720f755e0135d26c60cfc80d896f250e52a815b076712a772ff839f276b69" },
-    "tn-regionals": { file: "tn_regionals.gpx", points: 1161, haversine: 5093.8, min: 137.4, max: 158.4, start: 141.4, end: 153, sha: "7f4ccc7b389c319ff228ecabf8f326562cca9a0da1b4f07d15d8fe9230c8f74c" },
+    "hermitage": { file: "tn_regionals.gpx", points: 1161, haversine: 5093.8, min: 137.4, max: 158.4, start: 141.4, end: 153, sha: "7f4ccc7b389c319ff228ecabf8f326562cca9a0da1b4f07d15d8fe9230c8f74c" },
   } as const;
 
   describe.each(Object.entries(facts))("%s", (id, f) => {
@@ -129,7 +131,7 @@ describe("the five courses added from the coach's Garmin GPX files", () => {
   });
 
   it("all but Jesse Owens Park are about a 5K (within 3%); Jesse Owens Park is 2.53 mi and will not match a 5K", () => {
-    for (const id of ["bell-buckle", "kentucky-run-for-gold", "murfreesboro-classic", "tn-regionals", "john-hunt-park"]) {
+    for (const id of ["bell-buckle", "kentucky-run-for-gold", "murfreesboro-classic", "hermitage", "john-hunt-park"]) {
       expect(Math.abs(getCourse(id)!.distanceMeters - 5000) / 5000).toBeLessThanOrEqual(0.03);
     }
     expect(getCourse("jesse-owens-park")!.distanceMeters).toBeLessThan(4100);

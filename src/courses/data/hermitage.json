@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "id": "tn-regionals",
-  "name": "TN Regionals",
+  "id": "hermitage",
+  "name": "Hermitage",
   "place": "Nashville",
   "summary": "A run recorded with a Garmin watch on August 22, 2026.",
   "notes": [
-    "This is one recorded run (Garmin activity \"Nashville Running\"), not a measured or official race course. The route was not checked against a published course map.",
-    "Only the file name and the watch's own location label were used to name it, so the place is approximate."
+    "This is one recorded run (Garmin activity \"Nashville Running\"), not a measured or official race course. The coach identified it as the Hermitage course; the route was not checked against a published course map.",
+    "Only the coach's identification and the watch's own location label were used to name it, so the place is approximate."
   ],
   "source": {
     "kind": "garmin-gpx",
